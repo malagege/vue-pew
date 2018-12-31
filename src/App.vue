@@ -12,6 +12,8 @@
                 :style="{background: table[row][col].color}"
                 v-for="col in Array.from(table[row].keys())"
                 :key="col"
+                :row="row"
+                :col="col"
                 @click="tdChgColor($event)"
               >{{ table[row][col].color }}</td>
             </tr>
@@ -103,7 +105,40 @@ export default {
     tdChgColor($event) {
       if (this.now_selected != null) {
         var color = this.groups[this.now_selected].color;
-        $event.target.style.background = color;
+        // $event.target.style.background = color;
+
+        // 檢查td是否有顏色
+        let row = $event.target.getAttribute("row");
+        let col = $event.target.getAttribute("col");
+        if (this.table[row][col].color != "none") {
+          // 相同顏色取消color
+          if (this.table[row][col].group == this.now_selected) {
+            this.groups[this.now_selected].metas.splice(
+              this.groups[this.now_selected].metas.findIndex(
+                (obj, index) => index + 1 == this.table[row][col].index
+              ),
+              1
+            );
+            return false; // 不做填色處理
+          } else {
+            //移除不同顏色
+            this.groups[this.table[row][col].group].metas.splice(
+              this.groups[this.table[row][col].group].metas.findIndex(
+                (obj, index) => index + 1 == this.table[row][col].index
+              ),
+              1
+            );
+          }
+        }
+
+        this.groups[this.now_selected].metas.splice(
+          this.groups[this.now_selected].metas.length,
+          0,
+          {
+            row: $event.target.getAttribute("row"),
+            col: $event.target.getAttribute("col")
+          }
+        );
       } else {
         alert("請選擇顏色!!");
       }
@@ -125,13 +160,14 @@ export default {
         row.forEach((col, index2) => (arr[index1][index2] = { color: "none" }));
       });
       console.log(arr);
-      this.groups.forEach(group => {
+      this.groups.forEach((group, i) => {
         console.log("group.meta", group.metas);
         group.metas.forEach(
           (meta, index) =>
             (arr[meta.row][meta.col] = {
               color: group.color,
-              index: index + 1
+              index: index + 1,
+              group: i
             })
         );
       });
