@@ -33,6 +33,7 @@
           </label>
         </div>
         <div @click="newGroup">+ 新增群組</div>
+        <div @click="randGroup">o Rand Group</div>
       </div>
     </div>
   </div>
@@ -101,6 +102,22 @@ export default {
         color: this.getRandomColor(),
         metas: []
       });
+    },
+    randGroup() {
+      this.groups.forEach((group, index) => {
+        // console.log("shuffle", this.shuffle(group.metas));
+        // this.$set(this.groups[index], "metas", this.shuffle(group.metas));
+        // group.metas.sort(v => 0.5 - Math.random());
+        this.groups[index].metas.splice(this.shuffle(group.metas).length, 0);
+        console.log("group", group);
+      });
+    },
+    shuffle(a) {
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
     },
     removeGroup(index) {
       this.groups.splice(index, 1);
