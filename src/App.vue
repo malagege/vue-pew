@@ -7,6 +7,7 @@
         <div>
           <table class="pew">
             <tr v-for="row in Array.from(table.keys())" :key="row">
+              <!--Array.from(table[row].keys()) 改成table[row].length-->
               <td
                 :style="{background: table[row][col].color}"
                 v-for="col in Array.from(table[row].keys())"
@@ -101,9 +102,8 @@ export default {
     },
     tdChgColor($event) {
       if (this.now_selected != null) {
-        var color = this.groups[this.now_selected];
-
-        $event.target.style.background = this.groups[this.now_selected].color;
+        var color = this.groups[this.now_selected].color;
+        $event.target.style.background = color;
       } else {
         alert("請選擇顏色!!");
       }
@@ -116,9 +116,11 @@ export default {
     table() {
       console.log("this.groups", this.groups);
       let arr = Array.apply(null, Array(this.totalRows));
+      //只能用在null上面....
       arr.forEach(
         (obj, index) => (arr[index] = Array.apply(null, Array(this.totalCols)))
       );
+      //color沒定義的時候，render table時候null會發生錯誤
       arr.forEach((row, index1) => {
         row.forEach((col, index2) => (arr[index1][index2] = { color: "none" }));
       });
