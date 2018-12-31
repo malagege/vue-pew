@@ -15,7 +15,10 @@
                 :row="row"
                 :col="col"
                 @click="tdChgColor($event)"
-              >{{ table[row][col].color }}</td>
+              >
+                <span v-if="groups[table[row][col].group]">{{ groups[table[row][col].group].name}}</span>
+                {{ table[row][col].index }}
+              </td>
             </tr>
           </table>
         </div>
@@ -108,8 +111,10 @@ export default {
         // $event.target.style.background = color;
 
         // 檢查td是否有顏色
-        let row = $event.target.getAttribute("row");
-        let col = $event.target.getAttribute("col");
+        console.log("target", $event.currentTarget);
+        let row = $event.currentTarget.getAttribute("row");
+        let col = $event.currentTarget.getAttribute("col");
+        console.log(row + " this.table[row]:" + this.table[row]);
         if (this.table[row][col].color != "none") {
           // 相同顏色取消color
           if (this.table[row][col].group == this.now_selected) {
@@ -135,8 +140,8 @@ export default {
           this.groups[this.now_selected].metas.length,
           0,
           {
-            row: $event.target.getAttribute("row"),
-            col: $event.target.getAttribute("col")
+            row: $event.currentTarget.getAttribute("row"),
+            col: $event.currentTarget.getAttribute("col")
           }
         );
       } else {
@@ -159,7 +164,7 @@ export default {
       arr.forEach((row, index1) => {
         row.forEach((col, index2) => (arr[index1][index2] = { color: "none" }));
       });
-      console.log(arr);
+      console.log("arr", arr);
       this.groups.forEach((group, i) => {
         console.log("group.meta", group.metas);
         group.metas.forEach(
