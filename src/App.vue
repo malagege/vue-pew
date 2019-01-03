@@ -1,6 +1,5 @@
 <template>
   <div id="app">
-    <button @click="log(table)">test</button>
     <the-header></the-header>
     <div class="container">
       <div class="wrap">
@@ -15,16 +14,13 @@
                 :row="row"
                 :col="col"
                 @click="tdChgColor($event)"
-              >
-                <span v-if="groups[table[row][col].group]">{{ groups[table[row][col].group].name}}</span>
-                {{ table[row][col].index }}
-              </td>
+              >{{ table[row][col].index }}</td>
             </tr>
           </table>
         </div>
       </div>
-      <div class="inline-grid">
-        <div v-for="(obj,index) in groups" :key="index">
+      <div class="control">
+        <div class="group_wrap" v-for="(obj,index) in groups" :key="index">
           <label>
             <input type="radio" v-model="now_selected" :value="index">
             <input type="color" v-model="obj.color">
@@ -32,8 +28,8 @@
             <button @click="removeGroup(index)">刪除</button>
           </label>
         </div>
-        <div @click="newGroup">+ 新增群組</div>
-        <div @click="randGroup">o Rand Group</div>
+        <div class="group_wrap text-center" @click="newGroup">➕ 新增群組</div>
+        <div class="group_wrap text-center" @click="randGroup">🔱 隨機分組排序</div>
       </div>
     </div>
   </div>
@@ -55,7 +51,7 @@ export default {
       groups: [
         {
           name: "Group1",
-          color: "#2c7acd",
+          color: "#aefeed",
           metas: [
             {
               row: 1,
@@ -69,7 +65,7 @@ export default {
         },
         {
           name: "Group2",
-          color: "#675596",
+          color: "#cfacfc",
           metas: [
             {
               row: 3,
@@ -79,7 +75,7 @@ export default {
         },
         {
           name: "Group3",
-          color: "#140d34",
+          color: "#caecbc",
           metas: []
         }
       ],
@@ -89,10 +85,10 @@ export default {
   },
   methods: {
     getRandomColor() {
-      var letters = "0123456789ABCDEF";
+      var letters = "ABCDEF";
       var color = "#";
       for (var i = 0; i < 6; i++) {
-        color += letters[Math.floor(Math.random() * 16)];
+        color += letters[Math.floor(Math.random() * 6)];
       }
       return color;
     },
@@ -124,9 +120,6 @@ export default {
     },
     tdChgColor($event) {
       if (this.now_selected != null) {
-        var color = this.groups[this.now_selected].color;
-        // $event.target.style.background = color;
-
         // 檢查td是否有顏色
         console.log("target", $event.currentTarget);
         let row = $event.currentTarget.getAttribute("row");
@@ -218,6 +211,7 @@ body {
 
 .container {
   display: flex;
+  margin-top: 10px;
 }
 
 .wrap {
@@ -243,5 +237,27 @@ body {
   border: 1px solid black;
   width: 30px;
   height: 30px;
+  text-align: center;
+}
+
+.group_wrap {
+  padding: 5px 2px;
+  padding: 1px;
+  cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  border-radius: 1px;
+}
+
+.group_wrap:hover {
+  background: #e1e1e1;
+}
+
+.control {
+  background: #f5f5f5;
+}
+
+.text-center {
+  text-align: center;
+  height: 25px;
 }
 </style>

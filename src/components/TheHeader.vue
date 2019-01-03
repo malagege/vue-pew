@@ -13,5 +13,22 @@ export default {
 };
 </script>
 
-<style>
+<style scoped>
+header {
+  position: relative;
+  height: 100px;
+}
+header h1 {
+  background: #f5f5f5;
+  position: fixed;
+  margin: 0px;
+  height: 100px;
+  left: 0px;
+  right: 0px;
+  padding-top: 25px;
+  padding-bottom: 25px;
+  padding-left: calc(-500px + 100vw / 2);
+  padding-right: 30px;
+  box-sizing: border-box;
+}
 </style>
