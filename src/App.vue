@@ -27,6 +27,9 @@
           @remove="removeGroup"
           @add="addGroup"
           @shuffle="shuffleGroups"
+          @export="exportGroups"
+          @import="importGroups"
+          @clear="clearAll"
         />
       </aside>
     </main>
@@ -38,29 +41,90 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import SeatGrid from './components/SeatGrid.vue'
 import GroupPanel from './components/GroupPanel.vue'
-import type { CellInfo, Group } from './types'
+import type { CellInfo, Group, Seat } from './types'
 import { randomPastelColor, shuffle } from './utils'
 
 const ROWS = 10
 const COLS = 10
+const STORAGE_KEY = 'vue-pew-groups'
 
-const groups = ref<Group[]>([
-  {
-    name: 'Group 1',
-    color: '#aefeed',
-    metas: [
-      { row: 1, col: 1 },
-      { row: 2, col: 2 },
-    ],
-  },
-  { name: 'Group 2', color: '#cfacfc', metas: [{ row: 3, col: 3 }] },
-  { name: 'Group 3', color: '#caecbc', metas: [] },
-])
+function freshGroups(): Group[] {
+  return [
+    { name: 'Group 1', color: '#aefeed', metas: [] },
+    { name: 'Group 2', color: '#cfacfc', metas: [] },
+    { name: 'Group 3', color: '#caecbc', metas: [] },
+  ]
+}
 
-const selectedIndex = ref<number | null>(0)
+function demoGroups(): Group[] {
+  const [g1, g2, g3] = freshGroups()
+  g1.metas.push({ row: 1, col: 1 }, { row: 2, col: 2 })
+  g2.metas.push({ row: 3, col: 3 })
+  return [g1, g2, g3]
+}
+
+// 驗證外部資料（localStorage / 匯入檔）的形狀，不合法回傳 null
+function sanitizeGroups(data: unknown): Group[] | null {
+  if (!Array.isArray(data)) return null
+  const result: Group[] = []
+  for (const item of data) {
+    if (typeof item !== 'object' || item === null) return null
+    const { name, color, metas } = item as Record<string, unknown>
+    if (
+      typeof name !== 'string' ||
+      typeof color !== 'string' ||
+      !Array.isArray(metas)
+    ) {
+      return null
+    }
+    const seats: Seat[] = []
+    for (const meta of metas) {
+      if (typeof meta !== 'object' || meta === null) return null
+      const { row, col } = meta as Record<string, unknown>
+      const r = Number(row)
+      const c = Number(col)
+      if (
+        !Number.isInteger(r) ||
+        !Number.isInteger(c) ||
+        r < 0 ||
+        r >= ROWS ||
+        c < 0 ||
+        c >= COLS
+      ) {
+        return null
+      }
+      seats.push({ row: r, col: c })
+    }
+    result.push({ name, color, metas: seats })
+  }
+  return result
+}
+
+function loadGroups(): Group[] {
+  const raw = localStorage.getItem(STORAGE_KEY)
+  if (raw) {
+    try {
+      const parsed = sanitizeGroups(JSON.parse(raw))
+      if (parsed) return parsed
+    } catch {
+      // 壞掉的資料直接忽略，回到預設值
+    }
+  }
+  return demoGroups()
+}
+
+const groups = ref<Group[]>(loadGroups())
+
+watch(
+  groups,
+  (value) => localStorage.setItem(STORAGE_KEY, JSON.stringify(value)),
+  { deep: true },
+)
+
+const selectedIndex = ref<number | null>(groups.value.length > 0 ? 0 : null)
 
 const hint = ref('')
 let hintTimer: ReturnType<typeof setTimeout> | undefined
@@ -132,6 +196,41 @@ function shuffleGroups() {
     group.metas = shuffle(group.metas)
   })
   showHint('已重新隨機排序各組座位編號')
+}
+
+function exportGroups() {
+  const blob = new Blob([JSON.stringify(groups.value, null, 2)], {
+    type: 'application/json',
+  })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'vue-pew-seats.json'
+  link.click()
+  URL.revokeObjectURL(url)
+  showHint('已匯出座位表 JSON')
+}
+
+async function importGroups(file: File) {
+  try {
+    const parsed = sanitizeGroups(JSON.parse(await file.text()))
+    if (!parsed) {
+      showHint('匯入失敗：檔案格式不正確')
+      return
+    }
+    groups.value = parsed
+    selectedIndex.value = parsed.length > 0 ? 0 : null
+    showHint('匯入成功')
+  } catch {
+    showHint('匯入失敗：不是有效的 JSON 檔')
+  }
+}
+
+function clearAll() {
+  if (!window.confirm('確定要清空所有群組與座位分配嗎？')) return
+  groups.value = freshGroups()
+  selectedIndex.value = 0
+  showHint('已清空座位表')
 }
 </script>
 

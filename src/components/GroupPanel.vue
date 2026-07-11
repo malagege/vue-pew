@@ -37,11 +37,30 @@
     <div class="panel-actions">
       <button class="btn btn-primary" @click="$emit('add')">＋ 新增群組</button>
       <button class="btn" @click="$emit('shuffle')">🔀 隨機分組排序</button>
+      <div class="io-actions">
+        <button class="btn btn-small" title="下載座位表 JSON" @click="$emit('export')">
+          📤 匯出
+        </button>
+        <button class="btn btn-small" title="從 JSON 檔匯入座位表" @click="fileEl?.click()">
+          📥 匯入
+        </button>
+        <button class="btn btn-small btn-danger" title="清空所有座位分配" @click="$emit('clear')">
+          🗑 清空
+        </button>
+      </div>
+      <input
+        ref="fileEl"
+        class="hidden-file"
+        type="file"
+        accept=".json,application/json"
+        @change="onFileChange"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { Group } from '../types'
 import LabelInput from './LabelInput.vue'
 
@@ -50,12 +69,24 @@ defineProps<{
   selectedIndex: number | null
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   select: [index: number]
   remove: [index: number]
   add: []
   shuffle: []
+  export: []
+  import: [file: File]
+  clear: []
 }>()
+
+const fileEl = ref<HTMLInputElement | null>(null)
+
+function onFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (file) emit('import', file)
+  input.value = '' // 清掉才能重複匯入同一個檔案
+}
 </script>
 
 <style scoped>
@@ -160,5 +191,26 @@ defineEmits<{
 
 .btn-primary:hover {
   background: #4338ca;
+}
+
+.io-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-small {
+  flex: 1;
+  padding: 7px 4px;
+  font-size: 0.85rem;
+}
+
+.btn-danger:hover {
+  color: #dc2626;
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
+.hidden-file {
+  display: none;
 }
 </style>
