@@ -1,36 +1,55 @@
 <template>
-  <div class="label_input">
+  <span class="label-input">
     <input
-      v-if="is_edit"
+      v-if="editing"
+      ref="inputEl"
+      v-model="model"
       type="text"
-      :value="value"
-      @input="chgText($event.target.value)"
-      v-on:keyup.enter="is_edit=false"
-    >
-    <span v-else @dblclick="is_edit=true">{{value}}</span>
-  </div>
+      @keyup.enter="editing = false"
+      @blur="editing = false"
+    />
+    <span v-else class="label-text" title="雙擊修改名稱" @dblclick="startEdit">
+      {{ model }}
+    </span>
+  </span>
 </template>
 
-<script>
-export default {
-  props: {
-    value: String
-  },
-  data() {
-    return {
-      is_edit: false
-    };
-  },
-  methods: {
-    chgText(value) {
-      this.$emit("input", value);
-    }
-  }
-};
+<script setup lang="ts">
+import { nextTick, ref } from 'vue'
+
+const model = defineModel<string>({ required: true })
+
+const editing = ref(false)
+const inputEl = ref<HTMLInputElement | null>(null)
+
+async function startEdit() {
+  editing.value = true
+  await nextTick()
+  inputEl.value?.focus()
+  inputEl.value?.select()
+}
 </script>
 
 <style scoped>
-.label_input {
+.label-input {
   display: inline-block;
+}
+
+.label-input input {
+  width: 100%;
+  font: inherit;
+  padding: 2px 6px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  outline: none;
+}
+
+.label-text {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: none;
 }
 </style>

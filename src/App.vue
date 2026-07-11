@@ -1,263 +1,241 @@
 <template>
-  <div id="app">
-    <the-header></the-header>
-    <div class="container">
-      <div class="wrap">
-        <div>
-          <table class="pew">
-            <tr v-for="row in Array.from(table.keys())" :key="row">
-              <!--Array.from(table[row].keys()) 改成table[row].length-->
-              <td
-                :style="{background: table[row][col].color}"
-                v-for="col in Array.from(table[row].keys())"
-                :key="col"
-                :row="row"
-                :col="col"
-                @click="tdChgColor($event)"
-              >{{ table[row][col].index }}</td>
-            </tr>
-          </table>
-        </div>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>Vue Pew</h1>
+        <span class="subtitle">座位分組工具</span>
       </div>
-      <div class="control">
-        <div class="group_wrap" v-for="(obj,index) in groups" :key="index">
-          <label>
-            <input type="radio" v-model="now_selected" :value="index">
-            <input type="color" v-model="obj.color">
-            <label-input v-model="obj.name"></label-input>
-            <button @click="removeGroup(index)">刪除</button>
-          </label>
-        </div>
-        <div class="group_wrap text-center" @click="newGroup">➕ 新增群組</div>
-        <div class="group_wrap text-center" @click="randGroup">🔱 隨機分組排序</div>
+      <div class="stats">
+        已分配 <strong>{{ assignedCount }}</strong> / {{ ROWS * COLS }} 席
       </div>
-    </div>
+    </header>
+
+    <main class="layout">
+      <section class="card board">
+        <h2 class="card-title">座位表</h2>
+        <p class="card-desc">先在右側選擇群組，點擊座位加入該組；再點一次取消。</p>
+        <SeatGrid :rows="ROWS" :cols="COLS" :cells="cellMap" @toggle="toggleSeat" />
+      </section>
+
+      <aside class="card panel">
+        <h2 class="card-title">群組</h2>
+        <p class="card-desc">雙擊名稱可以重新命名。</p>
+        <GroupPanel
+          :groups="groups"
+          :selected-index="selectedIndex"
+          @select="selectedIndex = $event"
+          @remove="removeGroup"
+          @add="addGroup"
+          @shuffle="shuffleGroups"
+        />
+      </aside>
+    </main>
+
+    <Transition name="fade">
+      <div v-if="hint" class="toast">{{ hint }}</div>
+    </Transition>
   </div>
 </template>
 
-<script>
-import TheHeader from "./components/TheHeader.vue";
-import LabelInput from "./components/LabelInput.vue";
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import SeatGrid from './components/SeatGrid.vue'
+import GroupPanel from './components/GroupPanel.vue'
+import type { CellInfo, Group } from './types'
+import { randomPastelColor, shuffle } from './utils'
 
-export default {
-  name: "app",
-  components: {
-    TheHeader,
-    LabelInput
-  },
-  data() {
-    return {
-      now_selected: null,
-      groups: [
-        {
-          name: "Group1",
-          color: "#aefeed",
-          metas: [
-            {
-              row: 1,
-              col: 1
-            },
-            {
-              row: 2,
-              col: 2
-            }
-          ]
-        },
-        {
-          name: "Group2",
-          color: "#cfacfc",
-          metas: [
-            {
-              row: 3,
-              col: 3
-            }
-          ]
-        },
-        {
-          name: "Group3",
-          color: "#caecbc",
-          metas: []
-        }
-      ],
-      totalRows: 10,
-      totalCols: 10
-    };
-  },
-  methods: {
-    getRandomColor() {
-      var letters = "ABCDEF";
-      var color = "#";
-      for (var i = 0; i < 6; i++) {
-        color += letters[Math.floor(Math.random() * 6)];
-      }
-      return color;
-    },
-    newGroup() {
-      this.groups.push({
-        name: "New Group",
-        color: this.getRandomColor(),
-        metas: []
-      });
-    },
-    randGroup() {
-      this.groups.forEach((group, index) => {
-        // console.log("shuffle", this.shuffle(group.metas));
-        // this.$set(this.groups[index], "metas", this.shuffle(group.metas));
-        // group.metas.sort(v => 0.5 - Math.random());
-        this.groups[index].metas.splice(this.shuffle(group.metas).length, 0);
-        console.log("group", group);
-      });
-    },
-    shuffle(a) {
-      for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
-      }
-      return a;
-    },
-    removeGroup(index) {
-      this.groups.splice(index, 1);
-    },
-    tdChgColor($event) {
-      if (this.now_selected != null) {
-        // 檢查td是否有顏色
-        console.log("target", $event.currentTarget);
-        let row = $event.currentTarget.getAttribute("row");
-        let col = $event.currentTarget.getAttribute("col");
-        console.log(row + " this.table[row]:" + this.table[row]);
-        if (this.table[row][col].color != "none") {
-          // 相同顏色取消color
-          if (this.table[row][col].group == this.now_selected) {
-            this.groups[this.now_selected].metas.splice(
-              this.groups[this.now_selected].metas.findIndex(
-                (obj, index) => index + 1 == this.table[row][col].index
-              ),
-              1
-            );
-            return false; // 不做填色處理
-          } else {
-            //移除不同顏色
-            this.groups[this.table[row][col].group].metas.splice(
-              this.groups[this.table[row][col].group].metas.findIndex(
-                (obj, index) => index + 1 == this.table[row][col].index
-              ),
-              1
-            );
-          }
-        }
+const ROWS = 10
+const COLS = 10
 
-        this.groups[this.now_selected].metas.splice(
-          this.groups[this.now_selected].metas.length,
-          0,
-          {
-            row: $event.currentTarget.getAttribute("row"),
-            col: $event.currentTarget.getAttribute("col")
-          }
-        );
-      } else {
-        alert("請選擇顏色!!");
-      }
-    },
-    log(l) {
-      console.log(l);
-    }
+const groups = ref<Group[]>([
+  {
+    name: 'Group 1',
+    color: '#aefeed',
+    metas: [
+      { row: 1, col: 1 },
+      { row: 2, col: 2 },
+    ],
   },
-  computed: {
-    table() {
-      console.log("this.groups", this.groups);
-      let arr = Array.apply(null, Array(this.totalRows));
-      //只能用在null上面....
-      arr.forEach(
-        (obj, index) => (arr[index] = Array.apply(null, Array(this.totalCols)))
-      );
-      //color沒定義的時候，render table時候null會發生錯誤
-      arr.forEach((row, index1) => {
-        row.forEach((col, index2) => (arr[index1][index2] = { color: "none" }));
-      });
-      console.log("arr", arr);
-      this.groups.forEach((group, i) => {
-        console.log("group.meta", group.metas);
-        group.metas.forEach(
-          (meta, index) =>
-            (arr[meta.row][meta.col] = {
-              color: group.color,
-              index: index + 1,
-              group: i
-            })
-        );
-      });
-      return arr;
-    }
+  { name: 'Group 2', color: '#cfacfc', metas: [{ row: 3, col: 3 }] },
+  { name: 'Group 3', color: '#caecbc', metas: [] },
+])
+
+const selectedIndex = ref<number | null>(0)
+
+const hint = ref('')
+let hintTimer: ReturnType<typeof setTimeout> | undefined
+
+// 由 groups 反推出每個座位格的顯示資訊
+const cellMap = computed(() => {
+  const map = new Map<string, CellInfo>()
+  groups.value.forEach((group, groupIndex) => {
+    group.metas.forEach((meta, metaIndex) => {
+      map.set(`${meta.row},${meta.col}`, {
+        color: group.color,
+        index: metaIndex + 1,
+        groupIndex,
+        groupName: group.name,
+      })
+    })
+  })
+  return map
+})
+
+const assignedCount = computed(() =>
+  groups.value.reduce((sum, group) => sum + group.metas.length, 0),
+)
+
+function showHint(message: string) {
+  hint.value = message
+  clearTimeout(hintTimer)
+  hintTimer = setTimeout(() => (hint.value = ''), 2200)
+}
+
+function toggleSeat(row: number, col: number) {
+  if (selectedIndex.value === null) {
+    showHint('請先在右側選擇一個群組')
+    return
   }
-};
+  const cell = cellMap.value.get(`${row},${col}`)
+  if (cell) {
+    const owner = groups.value[cell.groupIndex]
+    owner.metas.splice(
+      owner.metas.findIndex((meta) => meta.row === row && meta.col === col),
+      1,
+    )
+    // 點到同組的座位＝取消選取，不再重新加入
+    if (cell.groupIndex === selectedIndex.value) return
+  }
+  groups.value[selectedIndex.value].metas.push({ row, col })
+}
+
+function addGroup() {
+  groups.value.push({
+    name: `Group ${groups.value.length + 1}`,
+    color: randomPastelColor(),
+    metas: [],
+  })
+}
+
+function removeGroup(index: number) {
+  groups.value.splice(index, 1)
+  if (selectedIndex.value === null) return
+  if (selectedIndex.value === index) {
+    selectedIndex.value = groups.value.length > 0 ? 0 : null
+  } else if (selectedIndex.value > index) {
+    selectedIndex.value--
+  }
+}
+
+function shuffleGroups() {
+  groups.value.forEach((group) => {
+    group.metas = shuffle(group.metas)
+  })
+  showHint('已重新隨機排序各組座位編號')
+}
 </script>
 
-<style>
-html,
-body {
-  margin: 0px;
-  padding: 0px;
-}
-
-#app {
-  font-family: "Avenir", Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  color: #2c3e50;
-  max-width: 1000px;
-  width: 80%;
-  margin: 0px auto;
-}
-
-.container {
+<style scoped>
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
-  margin-top: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 28px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
 }
 
-.wrap {
-  border: 1px solid black;
-  display: inline-grid;
-  width: 600px;
-  height: 400px;
-  overflow: auto;
-}
-.wrap > div {
-  margin: auto;
-  padding: 10px;
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
 }
 
-.pew {
-  border: 1px solid black;
-  /* border-collapse: collapse; */
-  width: max-content;
-  margin: auto;
+.brand h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: 0.5px;
+  color: var(--accent);
 }
 
-.pew td {
-  border: 1px solid black;
-  width: 30px;
-  height: 30px;
-  text-align: center;
+.subtitle {
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
-.group_wrap {
-  padding: 5px 2px;
-  padding: 1px;
-  cursor: pointer;
-  border: 1px solid rgba(0, 0, 0, 0.6);
-  border-radius: 1px;
+.stats {
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
-.group_wrap:hover {
-  background: #e1e1e1;
+.stats strong {
+  color: var(--text);
 }
 
-.control {
-  background: #f5f5f5;
+.layout {
+  max-width: 1080px;
+  margin: 24px auto;
+  padding: 0 20px 40px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px;
+  align-items: start;
 }
 
-.text-center {
-  text-align: center;
-  height: 25px;
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+.card-title {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+}
+
+.card-desc {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.board {
+  overflow-x: auto;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  background: #111827;
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  box-shadow: var(--shadow);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s, transform 0.25s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
 }
 </style>
