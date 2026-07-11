@@ -42,6 +42,8 @@ async function startEdit() {
   border: 1px solid var(--accent);
   border-radius: 6px;
   outline: none;
+  background: var(--card);
+  color: var(--text);
 }
 
 .label-text {

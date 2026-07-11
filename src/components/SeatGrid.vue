@@ -54,7 +54,7 @@ function cellAt(row: number, col: number): CellInfo | undefined {
   height: var(--seat-size);
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--seat-bg);
   color: var(--text);
   font-size: 0.8rem;
   display: flex;
@@ -73,5 +73,7 @@ function cellAt(row: number, col: number): CellInfo | undefined {
 .seat.filled {
   border-color: rgba(0, 0, 0, 0.15);
   font-weight: 600;
+  /* 座位底色是使用者選的粉彩色，固定深色文字才看得清楚 */
+  color: #1f2937;
 }
 </style>

@@ -5,16 +5,36 @@
         <h1>Vue Pew</h1>
         <span class="subtitle">座位分組工具</span>
       </div>
-      <div class="stats">
-        已分配 <strong>{{ assignedCount }}</strong> / {{ ROWS * COLS }} 席
+      <div class="topbar-right">
+        <div class="stats">
+          已分配 <strong>{{ assignedCount }}</strong> / {{ rows * cols }} 席
+        </div>
+        <button class="theme-btn" title="切換主題（系統 → 淺色 → 深色）" @click="cycle">
+          {{ themeLabel }}
+        </button>
       </div>
     </header>
 
     <main class="layout">
       <section class="card board">
-        <h2 class="card-title">座位表</h2>
-        <p class="card-desc">先在右側選擇群組，點擊座位加入該組；再點一次取消。</p>
-        <SeatGrid :rows="ROWS" :cols="COLS" :cells="cellMap" @toggle="toggleSeat" />
+        <div class="board-head">
+          <div>
+            <h2 class="card-title">座位表</h2>
+            <p class="card-desc">先在右側選擇群組，點擊座位加入該組；再點一次取消。</p>
+          </div>
+          <div class="size-controls">
+            <label>
+              列
+              <input v-model.number.lazy="rows" type="number" min="1" :max="MAX_SIZE" />
+            </label>
+            <span class="size-x">×</span>
+            <label>
+              欄
+              <input v-model.number.lazy="cols" type="number" min="1" :max="MAX_SIZE" />
+            </label>
+          </div>
+        </div>
+        <SeatGrid :rows="rows" :cols="cols" :cells="cellMap" @toggle="toggleSeat" />
       </section>
 
       <aside class="card panel">
@@ -46,10 +66,23 @@ import SeatGrid from './components/SeatGrid.vue'
 import GroupPanel from './components/GroupPanel.vue'
 import type { CellInfo, Group, Seat } from './types'
 import { randomPastelColor, shuffle } from './utils'
+import { useTheme } from './theme'
 
-const ROWS = 10
-const COLS = 10
 const STORAGE_KEY = 'vue-pew-groups'
+const MAX_SIZE = 30
+const DEFAULT_SIZE = 10
+
+const { pref, cycle } = useTheme()
+
+const themeLabel = computed(() =>
+  pref.value === 'system' ? '🖥️ 系統' : pref.value === 'light' ? '☀️ 淺色' : '🌙 深色',
+)
+
+interface PersistedState {
+  rows: number
+  cols: number
+  groups: Group[]
+}
 
 function freshGroups(): Group[] {
   return [
@@ -59,15 +92,19 @@ function freshGroups(): Group[] {
   ]
 }
 
-function demoGroups(): Group[] {
-  const [g1, g2, g3] = freshGroups()
-  g1.metas.push({ row: 1, col: 1 }, { row: 2, col: 2 })
-  g2.metas.push({ row: 3, col: 3 })
-  return [g1, g2, g3]
+function demoState(): PersistedState {
+  const groups = freshGroups()
+  groups[0].metas.push({ row: 1, col: 1 }, { row: 2, col: 2 })
+  groups[1].metas.push({ row: 3, col: 3 })
+  return { rows: DEFAULT_SIZE, cols: DEFAULT_SIZE, groups }
 }
 
 // 驗證外部資料（localStorage / 匯入檔）的形狀，不合法回傳 null
-function sanitizeGroups(data: unknown): Group[] | null {
+function sanitizeGroups(
+  data: unknown,
+  maxRows: number,
+  maxCols: number,
+): Group[] | null {
   if (!Array.isArray(data)) return null
   const result: Group[] = []
   for (const item of data) {
@@ -90,9 +127,9 @@ function sanitizeGroups(data: unknown): Group[] | null {
         !Number.isInteger(r) ||
         !Number.isInteger(c) ||
         r < 0 ||
-        r >= ROWS ||
+        r >= maxRows ||
         c < 0 ||
-        c >= COLS
+        c >= maxCols
       ) {
         return null
       }
@@ -103,31 +140,80 @@ function sanitizeGroups(data: unknown): Group[] | null {
   return result
 }
 
-function loadGroups(): Group[] {
+function sanitizeState(data: unknown): PersistedState | null {
+  // 舊版格式：整份資料就是群組陣列（固定 10×10）
+  if (Array.isArray(data)) {
+    const groups = sanitizeGroups(data, DEFAULT_SIZE, DEFAULT_SIZE)
+    return groups ? { rows: DEFAULT_SIZE, cols: DEFAULT_SIZE, groups } : null
+  }
+  if (typeof data !== 'object' || data === null) return null
+  const obj = data as Record<string, unknown>
+  const r = Number(obj.rows)
+  const c = Number(obj.cols)
+  if (
+    !Number.isInteger(r) ||
+    !Number.isInteger(c) ||
+    r < 1 ||
+    r > MAX_SIZE ||
+    c < 1 ||
+    c > MAX_SIZE
+  ) {
+    return null
+  }
+  const groups = sanitizeGroups(obj.groups, r, c)
+  return groups ? { rows: r, cols: c, groups } : null
+}
+
+function loadState(): PersistedState {
   const raw = localStorage.getItem(STORAGE_KEY)
   if (raw) {
     try {
-      const parsed = sanitizeGroups(JSON.parse(raw))
+      const parsed = sanitizeState(JSON.parse(raw))
       if (parsed) return parsed
     } catch {
       // 壞掉的資料直接忽略，回到預設值
     }
   }
-  return demoGroups()
+  return demoState()
 }
 
-const groups = ref<Group[]>(loadGroups())
-
-watch(
-  groups,
-  (value) => localStorage.setItem(STORAGE_KEY, JSON.stringify(value)),
-  { deep: true },
-)
+const initial = loadState()
+const rows = ref(initial.rows)
+const cols = ref(initial.cols)
+const groups = ref<Group[]>(initial.groups)
 
 const selectedIndex = ref<number | null>(groups.value.length > 0 ? 0 : null)
 
 const hint = ref('')
 let hintTimer: ReturnType<typeof setTimeout> | undefined
+
+// 尺寸變更：夾在合法範圍內，並移除超出新範圍的座位
+watch([rows, cols], () => {
+  if (!Number.isInteger(rows.value) || rows.value < 1) rows.value = 1
+  else if (rows.value > MAX_SIZE) rows.value = MAX_SIZE
+  if (!Number.isInteger(cols.value) || cols.value < 1) cols.value = 1
+  else if (cols.value > MAX_SIZE) cols.value = MAX_SIZE
+
+  let removed = 0
+  groups.value.forEach((group) => {
+    const before = group.metas.length
+    group.metas = group.metas.filter(
+      (meta) => meta.row < rows.value && meta.col < cols.value,
+    )
+    removed += before - group.metas.length
+  })
+  if (removed > 0) showHint(`已移除 ${removed} 個超出新範圍的座位`)
+})
+
+watch(
+  [groups, rows, cols],
+  () =>
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ rows: rows.value, cols: cols.value, groups: groups.value }),
+    ),
+  { deep: true },
+)
 
 // 由 groups 反推出每個座位格的顯示資訊
 const cellMap = computed(() => {
@@ -199,7 +285,12 @@ function shuffleGroups() {
 }
 
 function exportGroups() {
-  const blob = new Blob([JSON.stringify(groups.value, null, 2)], {
+  const data: PersistedState = {
+    rows: rows.value,
+    cols: cols.value,
+    groups: groups.value,
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
     type: 'application/json',
   })
   const url = URL.createObjectURL(blob)
@@ -213,13 +304,15 @@ function exportGroups() {
 
 async function importGroups(file: File) {
   try {
-    const parsed = sanitizeGroups(JSON.parse(await file.text()))
+    const parsed = sanitizeState(JSON.parse(await file.text()))
     if (!parsed) {
       showHint('匯入失敗：檔案格式不正確')
       return
     }
-    groups.value = parsed
-    selectedIndex.value = parsed.length > 0 ? 0 : null
+    rows.value = parsed.rows
+    cols.value = parsed.cols
+    groups.value = parsed.groups
+    selectedIndex.value = parsed.groups.length > 0 ? 0 : null
     showHint('匯入成功')
   } catch {
     showHint('匯入失敗：不是有效的 JSON 檔')
@@ -243,7 +336,7 @@ function clearAll() {
   align-items: center;
   justify-content: space-between;
   padding: 14px 28px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--topbar-bg);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border);
 }
@@ -266,6 +359,12 @@ function clearAll() {
   font-size: 0.9rem;
 }
 
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 .stats {
   color: var(--muted);
   font-size: 0.9rem;
@@ -273,6 +372,21 @@ function clearAll() {
 
 .stats strong {
   color: var(--text);
+}
+
+.theme-btn {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 0.85rem;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.theme-btn:hover {
+  border-color: var(--border-hover);
+  background: var(--hover);
 }
 
 .layout {
@@ -314,13 +428,50 @@ function clearAll() {
   overflow-x: auto;
 }
 
+.board-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.size-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.size-controls input {
+  width: 58px;
+  margin-left: 4px;
+  padding: 4px 6px;
+  font: inherit;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.size-controls input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.size-x {
+  color: var(--muted);
+}
+
 .toast {
   position: fixed;
   left: 50%;
   bottom: 32px;
   transform: translateX(-50%);
-  background: #111827;
-  color: #fff;
+  background: var(--toast-bg);
+  color: var(--toast-text);
   padding: 10px 18px;
   border-radius: 999px;
   font-size: 0.9rem;

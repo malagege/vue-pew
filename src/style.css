@@ -4,11 +4,44 @@
   --text: #1f2937;
   --muted: #6b7280;
   --accent: #4f46e5;
+  --accent-hover: #4338ca;
   --accent-soft: #eef2ff;
   --border: #e5e7eb;
+  --border-hover: #c7d2fe;
+  --hover: #f3f4f6;
+  --chip: #eef2f7;
+  --seat-bg: #ffffff;
+  --danger: #dc2626;
+  --danger-soft: #fee2e2;
+  --danger-border: #fecaca;
+  --toast-bg: #111827;
+  --toast-text: #ffffff;
+  --topbar-bg: rgba(255, 255, 255, 0.9);
   --radius: 14px;
   --seat-size: 34px;
   --shadow: 0 1px 3px rgba(16, 24, 40, 0.08), 0 8px 24px rgba(16, 24, 40, 0.06);
+}
+
+:root.dark {
+  --bg: #111827;
+  --card: #1f2937;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-soft: rgba(99, 102, 241, 0.18);
+  --border: #374151;
+  --border-hover: #4f46e5;
+  --hover: #374151;
+  --chip: #374151;
+  --seat-bg: #273549;
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.15);
+  --danger-border: #991b1b;
+  --toast-bg: #f9fafb;
+  --toast-text: #111827;
+  --topbar-bg: rgba(17, 24, 39, 0.9);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
 * {
@@ -22,6 +55,7 @@ body {
   font-family: 'Segoe UI', 'Noto Sans TC', 'Microsoft JhengHei', system-ui,
     -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 button {

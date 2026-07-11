@@ -108,7 +108,7 @@ function onFileChange(event: Event) {
 }
 
 .group-item:hover {
-  border-color: #c7d2fe;
+  border-color: var(--border-hover);
 }
 
 .group-item.active {
@@ -138,7 +138,7 @@ function onFileChange(event: Event) {
   min-width: 22px;
   text-align: center;
   font-size: 0.75rem;
-  background: #eef2f7;
+  background: var(--chip);
   border-radius: 999px;
   padding: 2px 6px;
   color: var(--muted);
@@ -153,8 +153,8 @@ function onFileChange(event: Event) {
 }
 
 .group-remove:hover {
-  color: #dc2626;
-  background: #fee2e2;
+  color: var(--danger);
+  background: var(--danger-soft);
 }
 
 .group-empty {
@@ -175,12 +175,13 @@ function onFileChange(event: Event) {
   padding: 9px 12px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--card);
+  color: var(--text);
   transition: background 0.15s;
 }
 
 .btn:hover {
-  background: #f3f4f6;
+  background: var(--hover);
 }
 
 .btn-primary {
@@ -190,7 +191,7 @@ function onFileChange(event: Event) {
 }
 
 .btn-primary:hover {
-  background: #4338ca;
+  background: var(--accent-hover);
 }
 
 .io-actions {
@@ -205,9 +206,9 @@ function onFileChange(event: Event) {
 }
 
 .btn-danger:hover {
-  color: #dc2626;
-  background: #fee2e2;
-  border-color: #fecaca;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
 }
 
 .hidden-file {
