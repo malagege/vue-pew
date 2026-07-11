@@ -4,6 +4,8 @@
 
 以 **Vue 3 + Vite + TypeScript** 開發。
 
+🔗 **線上版：<https://malagege.github.io/vue-pew/>**（push 到 `master` 會經由 GitHub Actions 自動建置並發布到 GitHub Pages）
+
 ## 功能
 
 - 座位表點擊分組：先選群組，點座位加入該組；再點一次取消，點別組的座位會改分到目前群組
